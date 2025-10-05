@@ -1,4 +1,4 @@
-Elyx — small scripting language (Deno)
+Elyx — Scripting language
 =====================================
 
 Elyx is a compact scripting language implemented in TypeScript and designed to run on Deno. It grew from a tutorial-based interpreter project and has been extended with many practical features including a usable REPL, classes, try/catch, switch/case, and packaging-ready CLI binaries.
