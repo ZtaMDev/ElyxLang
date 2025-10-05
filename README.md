@@ -25,8 +25,8 @@ REPL
 
 CLI and Packaging
 -----------------
-- `cli.ts` — CLI entry to run `.dsx` scripts or launch the REPL.
-- `dsxrepl.ts` — small wrapper used as a clean REPL entrypoint for `deno compile`.
+- `dsx` — CLI entry to run `.dsx` scripts or launch the REPL.
+- `dsxrepl` — small wrapper used as a clean REPL app.
 - Prebuilt native binaries (compiled with `deno compile`) are placed in the project root when you run the build steps (`dsx.exe` and `dsxrepl.exe` on Windows in this repo).
 - `deno.json` contains compiler options with `deno.ns` types and basic project metadata.
 
@@ -102,6 +102,7 @@ Elyx v0.1.1 introduces expanded runtime types, improved REPL commands, and deepe
     print(s.has(2));  // true
     print(s.size());  // 3
     ```
+    
 * **Enhanced equality:**
   Deep comparison (`==`, `!=`) now works for arrays, objects, maps, and sets.
 * **Runtime helpers:**
@@ -120,7 +121,6 @@ Elyx v0.1.1 introduces expanded runtime types, improved REPL commands, and deepe
 
 ---
 
-Would you like me to format this to fit seamlessly into the Markdown style and indentation of your current file (e.g., matching heading levels and code block style)?
 
 Permissions
 -----------
