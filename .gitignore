@@ -1,2 +1,29 @@
+# Ejecutables
 dsx.exe
 dsxrepl.exe
+
+# Carpetas de tests
+tests/
+tests/**
+
+# Herramientas o scripts auxiliares
+tools/
+tools/**
+
+# Archivos temporales de sistema
+*.log
+*.tmp
+*.bak
+*.swp
+*.DS_Store
+
+# Configuraciones del IDE (opcional, dependiendo de tu editor)
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Archivos de compilación
+build/
+dist/
+out/
