@@ -121,9 +121,7 @@ License
 -------
 MIT
 
----
-
-If you want, I can expand the README with API docs for the builtins, examples linked from `test.dsx`, and a short contributor guide. ¿Quieres que añada eso?  
+---  
 
 Installer / Windows setup (Inno Setup)
 ------------------------------------
