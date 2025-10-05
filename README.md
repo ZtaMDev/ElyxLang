@@ -117,10 +117,6 @@ deno compile --allow-read --allow-run --allow-env --unstable --output dsx cli.ts
 deno compile --allow-read --allow-run --allow-env --unstable --output dsxrepl dsxrepl.ts
 ```
 
-- Production helper scripts included:
-  - `run-dsx.ps1` — runs `dsx.exe` if present and sets `DENO_TRACE_PERMISSIONS=0` to avoid permission trace prompts.
-  - `run-all.ps1` — uses compiled executable if present, otherwise runs `deno run -A cli.ts`.
-
 License
 -------
 MIT
