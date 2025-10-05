@@ -78,6 +78,50 @@ const PI = 3.14
 let half = .5
 ```
 
+
+You can add the following **new section** right before the “License” heading in your `README.md`:
+
+---
+
+Elyx v0.1.1 introduces expanded runtime types, improved REPL commands, and deeper comparison support across complex structures.
+
+**Key Additions:**
+
+* **New data structures:**
+
+  * `Map([...])` — key/value container.
+
+    ```elyx
+    let m = Map([["a", 1], ["b", 2]]);
+    print(m.get("a")); // 1
+    ```
+  * `Set([...])` — unique-value collection.
+
+    ```elyx
+    let s = Set([1, 2, 2, 3]);
+    print(s.has(2));  // true
+    print(s.size());  // 3
+    ```
+* **Enhanced equality:**
+  Deep comparison (`==`, `!=`) now works for arrays, objects, maps, and sets.
+* **Runtime helpers:**
+
+  * `time()` — returns current timestamp in milliseconds.
+  * `typeOf(v)` — returns Elyx runtime type.
+  * `repr(v)` — prints detailed representation for debugging.
+  * `format("Hello {}", name)` — lightweight string formatting.
+* **File system access:**
+  Built-in `fs` object with methods such as `readText`, `writeText`, `readJSON`, `writeJSON`, `exists`, `mkdir`, and `readdir`.
+* **REPL improvements:**
+
+  * Added commands `:exit` / `exit` to leave the REPL.
+  * Removed unwanted `null` output after native function calls.
+  * More reliable error recovery and environment reset behavior.
+
+---
+
+Would you like me to format this to fit seamlessly into the Markdown style and indentation of your current file (e.g., matching heading levels and code block style)?
+
 Permissions
 -----------
 - REPL / CLI features that interact with the host (clearing terminal via external commands, listing environment variables, file IO) require appropriate Deno permissions: `--allow-read`, `--allow-run`, `--allow-env`.
