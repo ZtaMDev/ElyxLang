@@ -168,4 +168,4 @@ deno compile --allow-read --allow-run --allow-env --unstable --output dsxrepl ds
 
 4. The resulting `Setup_Elyx_x.y.z.exe` will install Elyx to Program Files and create Start Menu shortcuts. After installation the user can run `dsx` or `dsxrepl` from a terminal or search for "Elyx REPL" in the Start Menu.
 
-If you want I can further customize the Inno script to automatically add the installation folder to the PATH (with an option), register uninstaller entries, or create a multi-architecture installer. Tell me how you want the installer to behave and I'll adapt the `.iss` script.
+If you want I can further customize the Inno script to automatically add the installation folder to the PATH (with an option), register uninstaller entries, or create a multi-architecture installer. Tell me how you want the installer to behave and I'll adapt the `.iss` script

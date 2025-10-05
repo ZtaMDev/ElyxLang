@@ -214,3 +214,18 @@ switch (code2) {
 
 // final repr of global env elements
 print("Finished test file")
+
+
+print({a:1,b:2} == {a:1,b:2})
+print([1,2] == [1,2])
+print({a:1,b:2} != {a:1,b:3})
+
+let m = Map({"a": 1, "b": 2})
+m.set("c", 3)
+print(m.get("c"))   // 3
+print(m.has("a"))   // true
+
+s = Set(1, 2, 3)
+s.add(4)
+print(s.has(2))     // true
+print(s.size())     // 4

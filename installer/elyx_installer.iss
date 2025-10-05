@@ -5,8 +5,8 @@
 ; =====================================================
 
 #define MyAppName "Elyx"
-#define MyAppVersion "0.1.0"
-#define MyAppPublisher "Elyx Dev Team"
+#define MyAppVersion "0.1.1"
+#define MyAppPublisher "ZtaMDev"
 #define MyAppExeName "dsxrepl.exe"
 #define Src ".."
 

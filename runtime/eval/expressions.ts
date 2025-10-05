@@ -49,6 +49,79 @@ export function eval_binary_expr (binop: BinaryExpr, env: Enviroment): RuntimeVa
         const rights = runtimeToString(rhs);
         return MK_STRING(lefts + rights);
     }
+    // helper: deep equality for any RuntimeVal
+    function deepEqual(a: RuntimeVal, b: RuntimeVal, visited = new Set<any>()): boolean {
+        if (a === b) return true;
+        if (a.type !== b.type) return false;
+
+        switch (a.type) {
+            case 'string':
+                return (a as StringVal).value === (b as StringVal).value;
+            case 'number':
+                return (a as NumberVal).value === (b as NumberVal).value;
+            case 'boolean':
+                return (a as BooleanVal).value === (b as BooleanVal).value;
+            case 'null':
+                return true;
+            case 'array': {
+                const arrA = (a as ArrayVal).elements;
+                const arrB = (b as ArrayVal).elements;
+                if (arrA.length !== arrB.length) return false;
+                for (let i = 0; i < arrA.length; i++) {
+                    if (!deepEqual(arrA[i], arrB[i], visited)) return false;
+                }
+                return true;
+            }
+            case 'object': {
+                const propsA = (a as ObjectVal).properties;
+                const propsB = (b as ObjectVal).properties;
+                if (propsA.size !== propsB.size) return false;
+                for (const [key, valA] of propsA.entries()) {
+                    const valB = propsB.get(key);
+                    if (!valB || !deepEqual(valA, valB, visited)) return false;
+                }
+                return true;
+            }
+            case 'map': {
+                const mapA = (a as MapVal).map;
+                const mapB = (b as MapVal).map;
+                if (mapA.size !== mapB.size) return false;
+                for (const [key, valA] of mapA.entries()) {
+                    const valB = mapB.get(key);
+                    if (!valB || !deepEqual(valA, valB, visited)) return false;
+                }
+                return true;
+            }
+            case 'set': {
+                const setA = (a as SetVal).values;
+                const setB = (b as SetVal).values;
+                if (setA.length !== setB.length) return false;
+                const serialize = (v: RuntimeVal): string => {
+                    switch (v.type) {
+                        case 'string': return `"${(v as StringVal).value}"`;
+                        case 'number': return String((v as NumberVal).value);
+                        case 'boolean': return String((v as BooleanVal).value);
+                        case 'null': return 'null';
+                        default: return v.type;
+                    }
+                };
+                const normA = setA.map(serialize).sort().join(',');
+                const normB = setB.map(serialize).sort().join(',');
+                return normA === normB;
+            }
+            case 'function':
+            case 'native-fn':
+                return a === b;
+            default:
+                return false;
+        }
+    }
+    if (binop.operator == '==' || binop.operator == '!=') {
+        const isEqual = deepEqual(lhs, rhs);
+        return MK_BOOL(binop.operator == '==' ? isEqual : !isEqual);
+    }
+
+
 
     return MK_NULL();
 }
@@ -236,7 +309,7 @@ export function eval_member_expr(node: MemberExpr, env: Enviroment): RuntimeVal 
         if (node.property.kind !== 'Identifier') throw 'Invalid member property';
         propName = (node.property as Identifier).symbol;
     }
-
+    
     // Array behavior
     if (obj.type === 'array') {
         const arr = obj as ArrayVal;
@@ -325,24 +398,96 @@ export function eval_member_expr(node: MemberExpr, env: Enviroment): RuntimeVal 
         return MK_NULL();
     }
 
-    // Map methods
+    // dentro de eval_member_expr, caso map:
     if (obj.type === 'map') {
         const m = obj as MapVal;
-        if (propName === 'has') return MK_NATIVE_FN((args) => MK_BOOL(m.map.has((args[0] as StringVal).value)));
-        if (propName === 'get') return MK_NATIVE_FN((args) => m.map.has((args[0] as StringVal).value) ? m.map.get((args[0] as StringVal).value)! : MK_NULL());
-        if (propName === 'set') return MK_NATIVE_FN((args) => { m.map.set((args[0] as StringVal).value, args[1]); return MK_NULL(); });
-        if (propName === 'keys') return MK_NATIVE_FN(() => MK_ARRAY(Array.from(m.map.keys()).map(k => MK_STRING(k))));
+
+        const runtimeKeyToStr = (k: RuntimeVal) => {
+            switch (k.type) {
+                case "string": return (k as StringVal).value;
+                case "number": return String((k as NumberVal).value);
+                case "boolean": return String((k as BooleanVal).value);
+                default: return JSON.stringify(k); // fallback
+            }
+        };
+
+        if (propName === 'get') return MK_NATIVE_FN((args) => {
+            if (args.length === 0) return MK_NULL();
+            const keyStr = runtimeKeyToStr(args[0]);
+            return m.map.has(keyStr) ? m.map.get(keyStr)! : MK_NULL();
+        });
+
+        if (propName === 'set') return MK_NATIVE_FN((args) => {
+            if (args.length === 0) throw `map.set expects (key, value)`;
+            const keyStr = runtimeKeyToStr(args[0]);
+            const val = args[1] ?? MK_NULL();
+            m.map.set(keyStr, val);
+            return MK_NULL();
+        });
+
+        if (propName === 'has') return MK_NATIVE_FN((args) => {
+            if (args.length === 0) return MK_BOOL(false);
+            return MK_BOOL(m.map.has(runtimeKeyToStr(args[0])));
+        });
+
+        if (propName === 'size') return MK_NATIVE_FN(() => MK_NUMBER(m.map.size));
+
+        return MK_NULL();
+    }
+    // --- SET METHODS ---
+    if (obj.type === 'set') {
+        const s = obj as SetVal;
+
+        // helper para comparar valores (igual que deepEqualRuntime)
+        const deepEq = (a: RuntimeVal, b: RuntimeVal): boolean => {
+            if (a.type !== b.type) return false;
+            switch (a.type) {
+                case "number": return (a as NumberVal).value === (b as NumberVal).value;
+                case "string": return (a as StringVal).value === (b as StringVal).value;
+                case "boolean": return (a as BooleanVal).value === (b as BooleanVal).value;
+                case "null": return true;
+                default: return a === b;
+            }
+        };
+
+        // --- has() ---
+        if (propName === "has")
+            return MK_NATIVE_FN((args) => {
+                if (args.length === 0) return MK_BOOL(false);
+                const val = args[0];
+                return MK_BOOL(s.values.some(v => deepEq(v, val)));
+            });
+
+        // --- add() ---
+        if (propName === "add")
+            return MK_NATIVE_FN((args) => {
+                if (args.length === 0) return MK_NULL();
+                const val = args[0];
+                if (!s.values.some(v => deepEq(v, val))) s.values.push(val);
+                return MK_NULL();
+            });
+
+        // --- remove() ---
+        if (propName === "remove")
+            return MK_NATIVE_FN((args) => {
+                if (args.length === 0) return MK_BOOL(false);
+                const val = args[0];
+                const idx = s.values.findIndex(v => deepEq(v, val));
+                if (idx >= 0) {
+                    s.values.splice(idx, 1);
+                    return MK_BOOL(true);
+                }
+                return MK_BOOL(false);
+            });
+
+        // --- size ---
+        if (propName === "size")
+            return MK_NATIVE_FN(() => MK_NUMBER(s.values.length));
+
         return MK_NULL();
     }
 
-    // Set methods
-    if (obj.type === 'set') {
-        const s = obj as SetVal;
-        if (propName === 'add') return MK_NATIVE_FN((args) => { s.values.push(...args); return MK_NULL(); });
-        if (propName === 'remove') return MK_NATIVE_FN((args) => { const v = args[0]; const idx = s.values.findIndex(e => deepEqualRuntime(e, v)); if (idx>=0) { s.values.splice(idx,1); return MK_BOOL(true);} return MK_BOOL(false); });
-        if (propName === 'has') return MK_NATIVE_FN((args) => MK_BOOL(s.values.some(e => deepEqualRuntime(e, args[0]))));
-        return MK_NULL();
-    }
+
 
     return MK_NULL();
 }

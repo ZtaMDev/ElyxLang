@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any verbatim-module-syntax
-import { MK_BOOL, MK_NATIVE_FN, MK_NULL, MK_NUMBER, MK_STRING, MK_ARRAY, RuntimeVal, StringVal, NumberVal, BooleanVal, ObjectVal, ArrayVal, MapVal, SetVal } from "./values.ts";
+import { MK_BOOL, MK_NATIVE_FN, MK_NULL, MK_NUMBER, MK_STRING, MK_ARRAY, RuntimeVal, StringVal, NumberVal, BooleanVal, ObjectVal, ArrayVal, MapVal, SetVal, MK_MAP, MK_SET } from "./values.ts";
 // no-op import for map/set constructors in this file
 
 export function createGlovalEnv () {
@@ -7,6 +7,83 @@ export function createGlovalEnv () {
     env.declareVar('true', MK_BOOL(true), true);
     env.declareVar('false', MK_BOOL(false), true);
     env.declareVar("null", MK_NULL(), true);
+
+    // --- Map constructor (acepta array-of-pairs, object o key/value pairs) ---
+    env.declareVar("Map", MK_NATIVE_FN((args) => {
+        const m = new Map<string, RuntimeVal>();
+
+        const keyToStr = (k: RuntimeVal) => {
+            switch (k.type) {
+                case "string": return (k as StringVal).value;
+                case "number": return String((k as NumberVal).value);
+                case "boolean": return String((k as BooleanVal).value);
+                default: throw `Map key must be string|number|boolean (got ${k.type})`;
+            }
+        };
+
+        if (args.length === 1) {
+            const a0 = args[0];
+            if (a0.type === "array") {
+                // array of pairs: [ [k,v], [k,v] ]
+                for (const item of (a0 as ArrayVal).elements) {
+                    if (item.type !== "array") throw `Map(array): expected inner pairs to be arrays`;
+                    const pair = (item as ArrayVal).elements;
+                    const key = pair[0] ?? MK_NULL();
+                    const val = pair[1] ?? MK_NULL();
+                    m.set(keyToStr(key), val);
+                }
+            } else if (a0.type === "object") {
+                for (const [k, v] of (a0 as ObjectVal).properties.entries()) {
+                    m.set(k, v);
+                }
+            } else {
+                throw `Map(): unsupported single-arg type ${a0.type}`;
+            }
+        } else if (args.length === 0) {
+            // empty map
+        } else {
+            // treat args as key,value,key,value...
+            if (args.length % 2 !== 0) throw `Map(): expected even number of args (key, value) pairs`;
+            for (let i = 0; i < args.length; i += 2) {
+                m.set(keyToStr(args[i]), args[i + 1]);
+            }
+        }
+
+        return MK_MAP(Array.from(m.entries()));
+    }), true);
+
+    // --- Set constructor (dedup) ---
+    env.declareVar("Set", MK_NATIVE_FN((args) => {
+        let items: RuntimeVal[] = [];
+        if (args.length === 1 && args[0].type === "array") {
+            items = (args[0] as ArrayVal).elements;
+        } else {
+            items = args.slice();
+        }
+
+        const seen = new Set<string>();
+        const out: RuntimeVal[] = [];
+
+        const serialize = (v: RuntimeVal) => {
+            switch (v.type) {
+                case "string": return "s:" + (v as StringVal).value;
+                case "number": return "n:" + String((v as NumberVal).value);
+                case "boolean": return "b:" + String((v as BooleanVal).value);
+                case "null": return "null";
+                default: return v.type + ":" + JSON.stringify(v); // fallback
+            }
+        };
+
+        for (const it of items) {
+            const s = serialize(it);
+            if (!seen.has(s)) { seen.add(s); out.push(it); }
+        }
+
+        return MK_SET(out);
+    }), true);
+
+
+
 
     // pretty printing helper
     function reprVal(v: RuntimeVal, depth = 0, visited = new Set<RuntimeVal|object>()) : string {
@@ -258,6 +335,29 @@ export function createGlovalEnv () {
     }
     
     env.declareVar("time", MK_NATIVE_FN(timeFunction), true);
+
+        // input(prompt?) - lee una línea desde stdin
+    env.declareVar("input", MK_NATIVE_FN((args) => {
+        let prompt = "";
+        if (args.length > 0 && args[0].type === "string") {
+            prompt = (args[0] as StringVal).value;
+        }
+
+        // Mostrar el prompt sin salto de línea
+        if (prompt) {
+            Deno.stdout.writeSync(new TextEncoder().encode(prompt));
+        }
+
+        // Leer la entrada del usuario desde stdin
+        const buf = new Uint8Array(1024);
+        const n = <number>Deno.stdin.readSync(buf);
+        if (n === null) return MK_STRING(""); // EOF
+
+        // Convertir a string limpio
+        const inputStr = new TextDecoder().decode(buf.subarray(0, n)).trimEnd();
+
+        return MK_STRING(inputStr);
+    }), true);
 
     return env;
 }

@@ -5,7 +5,7 @@ New-Item -ItemType Directory -Path $dist | Out-Null
 
 $root = Get-Location
 
-$files = @('dsx.exe','dsxrepl.exe','icon.ico','README.md')
+$files = @('dsx.exe','dsxrepl.exe','icon.ico','README.md', 'LICENSE.txt')
 foreach ($f in $files) {
     $src = Join-Path $root $f
     if (Test-Path $src) {

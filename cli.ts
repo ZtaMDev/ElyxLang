@@ -4,7 +4,7 @@ import { createGlovalEnv } from "./runtime/enviroment.ts";
 import { evaluate } from "./runtime/interpreter.ts";
 import { repl as replRun } from "./repl.ts";
 
-const VERSION = "0.0.1";
+const VERSION = "0.1.1";
 
 async function runFile(path: string) {
   const parser = new Parser();

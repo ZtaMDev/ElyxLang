@@ -13,6 +13,7 @@ import {
     CallExpr,
     MemberExpr, 
     FunctionDeclaration,
+    ArrayLiteral,
 } from "./ast.ts"
 
 import { tokenize, Token, TokenType } from "./lexer.ts";
@@ -624,40 +625,53 @@ export default class Parser {
 
       return left;
     }
-        private parse_object_expr(): Expr {
-            if (this.at().type !== TokenType.OpenBrace){
-                return this.parse_comparison_expr();
+    private parse_object_expr(): Expr {
+        if (this.at().type !== TokenType.OpenBrace) {
+            return this.parse_comparison_expr();
+        }
+
+        this.eat(); // consume '{'
+        const properties: Property[] = [];
+
+        while (this.not_eof() && this.at().type != TokenType.CloseBrace) {
+            // permitir líneas en blanco
+            if (this.at().type == TokenType.Newline) { this.eat(); continue; }
+
+            const key = this.expect(TokenType.Identifier, "Object literal key expected.").value;
+
+            if (this.at().type == TokenType.Coma) {
+                this.eat();
+                properties.push({ key, kind: "Property" } as Property);
+                continue;
+            } else if (this.at().type == TokenType.CloseBrace) {
+                properties.push({ key, kind: "Property" } as Property);
+                continue;
             }
 
-            this.eat()
-            const properties = new Array<Property>();
+            this.expect(TokenType.Colon, "Missing colon following identifier in ObjectExpr");
+            const value = this.parse_expr();
+            properties.push({ kind: "Property", value, key });
 
-            while (this.not_eof() && this.at().type != TokenType.CloseBrace) {
-                // allow blank lines inside object literals
-                if (this.at().type == TokenType.Newline) { this.eat(); continue; }
-                const key = this.expect(TokenType.Identifier, `Object literal key expected.`).value;
-        if (this.at().type == TokenType.Coma) {
-            this.eat();
-            properties.push({key, kind: "Property"} as Property);
-            continue;
+            if (this.at().type != TokenType.CloseBrace) {
+                this.expect(TokenType.Coma, "Expected comma or closing brace following property");
+            }
         }
-        else if (this.at().type == TokenType.CloseBrace) {
-            properties.push({key, kind: "Property"} as Property);
-            continue;
+
+        this.expect(TokenType.CloseBrace, "Object literal missing closing brace.");
+
+        // ⚠️ crucial: permitir que el objeto sea parte de una expresión más grande (como {a:1} == {b:2})
+        let objectExpr: Expr = { kind: "ObjectLiteral", properties } as ObjectLiteral;
+
+        // Si después del objeto viene un operador binario, continuar parseando
+        while (this.at().type == TokenType.BinaryOperator) {
+            const operator = this.eat().value;
+            const right = this.parse_comparison_expr();
+            objectExpr = { kind: "BinaryExpr", left: objectExpr, right, operator } as BinaryExpr;
         }
-        this.expect(TokenType.Colon, `Missing colon following identifier in ObejctExpr`);
-        const value = this.parse_expr();
 
-        properties.push({kind: "Property", value, key});
-
-        if (this.at().type != TokenType.CloseBrace) {
-            this.expect(TokenType.Coma, `Expected coma or Closing Bracket following property`);
-        }
-      }
-
-      this.expect(TokenType.CloseBrace, `Object literal missing closing brace.`);
-      return { kind: "ObjectLiteral", properties} as ObjectLiteral;
+        return objectExpr;
     }
+
 
     private parse_additive_expr(): Expr {
         let left = this.parse_multiplicative_expr();
@@ -677,13 +691,103 @@ export default class Parser {
     }
 
     private parse_call_member_expr(): Expr {
-        const member = this.parse_member_expr();
+        // empezamos por parsear miembro normal (ident, literal, calls previas, member chains)
+        let member = this.parse_member_expr();
 
-        if(this.at().type == TokenType.OpenParen) {
-            return this.parse_call_expr(member);
+        // permitir secuencias: llamdas ( ... ) y también IDENT { ... } estilo Set{...}
+        while (true) {
+            // caso normal: llamada con paréntesis
+            if (this.at().type === TokenType.OpenParen) {
+                member = this.parse_call_expr(member);
+                continue;
+            }
+
+            // caso nuevo: IDENT { ... }  -> ej Set{1,2}  o Map{"a"=>1} o Obj{a:1}
+            // solo tiene sentido si el "member" es un identificador (p.ej "Set")
+            if (this.at().type === TokenType.OpenBrace && (member as any).kind === "Identifier") {
+                // consumir '{'
+                this.eat();
+
+                // helper para mirar tokens siguientes sin consumir
+                const peek = (n = 0) => (this.tokens[n] ? this.tokens[n] : { type: TokenType.EOF, value: "" });
+
+                // caso vacío: Set{}
+                if (this.at().type === TokenType.CloseBrace) {
+                    this.eat(); // consumir '}'
+                    const arrEmpty = { kind: "ArrayLiteral", elements: [] } as ArrayLiteral;
+                    member = { kind: "CallExpr", caller: member, args: [arrEmpty] } as CallExpr;
+                    continue;
+                }
+
+                // Detectar si es estilo objeto (clave:valor o "clave" => valor)
+                const isPossibleKey = this.at().type === TokenType.Identifier || this.at().type === TokenType.String;
+                const nextTok = peek(1);
+
+                const isArrowMap = nextTok && nextTok.type === TokenType.Equals && (peek(2).type === TokenType.BinaryOperator && peek(2).value === ">");
+                const isColonStyle = nextTok && nextTok.type === TokenType.Colon;
+
+                if (isPossibleKey && (isColonStyle || isArrowMap)) {
+                    // parsear pares clave:valor o "key" => value
+                    const props: Property[] = [];
+                    while (this.at().type !== TokenType.CloseBrace && this.not_eof()) {
+                        // key puede ser identifier o string
+                        // deno-lint-ignore prefer-const
+                        let rawKeyToken = this.eat();
+                        let keyStr: string;
+                        if (rawKeyToken.type === TokenType.String) {
+                            // el lexer guarda strings con prefijo s: o f:, extraer contenido
+                            keyStr = rawKeyToken.value.slice(2);
+                        } else {
+                            keyStr = rawKeyToken.value;
+                        }
+
+                        // consumir ':'  o '=>' (tokenizado como Equals + '>' BinaryOperator)
+                        if (this.at().type === TokenType.Colon) {
+                            this.eat();
+                        } else if (this.at().type === TokenType.Equals && peek(1).type === TokenType.BinaryOperator && peek(1).value === ">") {
+                            // consumir '=' y '>'
+                            this.eat(); // =
+                            this.eat(); // >
+                        } else {
+                            throw new Error("Expected ':' or '=>' in Map/Object style inside braces");
+                        }
+
+                        const valueExpr = this.parse_expr();
+                        props.push({ kind: "Property", key: keyStr, value: valueExpr } as Property);
+
+                        if (this.at().type === TokenType.Coma) {
+                            this.eat(); // coma -> siguiente propiedad
+                            continue;
+                        }
+                        break;
+                    }
+
+                    this.expect(TokenType.CloseBrace, "Missing closing brace for object-style constructor");
+                    const objNode = { kind: "ObjectLiteral", properties: props } as ObjectLiteral;
+                    member = { kind: "CallExpr", caller: member, args: [objNode] } as CallExpr;
+                    continue;
+                }
+
+                // si no es estilo key:value, parsear como lista de elementos (ArrayLiteral) p.ej Set{1,2,expr}
+                const elements: Expr[] = [];
+                elements.push(this.parse_assignment_expr());
+                while (this.at().type === TokenType.Coma) {
+                    this.eat();
+                    elements.push(this.parse_assignment_expr());
+                }
+                this.expect(TokenType.CloseBrace, "Missing closing brace for list-style constructor");
+                const arrNode = { kind: "ArrayLiteral", elements } as ArrayLiteral;
+                member = { kind: "CallExpr", caller: member, args: [arrNode] } as CallExpr;
+                continue;
+            }
+
+            // si no hay más patrones, salimos
+            break;
         }
-        return member
+
+        return member;
     }
+
     
     private parse_call_expr(caller: Expr): Expr {
       let call_expr: Expr = { 
@@ -700,24 +804,29 @@ export default class Parser {
     }
 
     private parse_args(): Expr[] {
-      this.expect(TokenType.OpenParen, `Expected open parenthesis`);
-      const args = this.at().type == TokenType.CloseParen
-      ? []
-      : this.parse_arguments_list();
+        this.expect(TokenType.OpenParen, "Expected '(' before arguments");
+        const args: Expr[] = [];
+        if (this.at().type !== TokenType.CloseParen) {
+            args.push(...this.parse_arguments_list());
+        }
+        this.expect(TokenType.CloseParen, "Missing closing parenthesis inside arguments list");
+        return args;
+        }
 
-      this.expect(TokenType.CloseParen, `Missing closing parenthesis inside arguments list`);
-      return args;
-    }
+        private parse_arguments_list(): Expr[] {
+        const args: Expr[] = [];
+        while (true) {
+            args.push(this.parse_expr());
+            // stop only if next token is ) or EOF
+            if (this.at().type === TokenType.Coma) {
+            this.eat();
+            continue;
+            }
+            break;
+        }
+        return args;
+        }
 
-    private parse_arguments_list(): Expr[] {
-      const args = [this.parse_assignment_expr()];
-
-      while (this.at().type == TokenType.Coma && this.eat()) {
-        args.push(this.parse_assignment_expr());
-      }
-
-      return args;
-    }
 
     private parse_member_expr(): Expr {
       let object = this.parse_primary_expr();
@@ -882,9 +991,13 @@ export default class Parser {
                 }
                 return node;
             }
+            case TokenType.OpenBrace: {
+                // Object literal
+                return this.parse_object_expr();
+            }
 
             default:
-        throw new Error("Unexpected token found during parsing: " + JSON.stringify(this.at()));
+                throw new Error("Unexpected token found during parsing: " + JSON.stringify(this.at()));
         }
 
 
