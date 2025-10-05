@@ -78,9 +78,6 @@ const PI = 3.14
 let half = .5
 ```
 
-
-You can add the following **new section** right before the “License” heading in your `README.md`:
-
 ---
 
 Elyx v0.1.1 introduces expanded runtime types, improved REPL commands, and deeper comparison support across complex structures.
