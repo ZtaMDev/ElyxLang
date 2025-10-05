@@ -86,7 +86,7 @@ Permissions
 Author, credits and history
 ---------------------------
 - Author / maintainer of these changes and packaging: ZtaMDev (https://github.com/ZtaMDev).
-- Original interpreter tutorial and foundation: inspired by the tutorial by Tyler Laceby and other educational resources on building interpreters.
+- Original interpreter tutorial and foundation: inspired by the tutorial by (TylerLaceby)[https://youtube.com/@tylerlaceby?si=1EgFGvFOsbN8DBqa]and other educational resources on building interpreters.
 - Notable additions in this fork / work:
   - A robust REPL with persistent history and commands.
   - Improved terminal clear handling and VS Code heuristics.
