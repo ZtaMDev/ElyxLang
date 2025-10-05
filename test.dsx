@@ -1,0 +1,216 @@
+// Full language exercise for tests
+
+// functions, closures, return
+func makeAdder(offset) {
+    func add(x, y) {
+        return x + y + offset
+    }
+    return add
+}
+
+const adder = makeAdder(2)
+print("adder(10,5) => ", adder(10,5))
+
+// variables, const, assignment
+let x = 1
+let y = 2
+print(x, y)
+x = 10
+print(x)
+
+const PI = 3
+print(PI)
+
+// arrays and array methods
+let a = [1, 2, 3]
+print("a before:", a)
+
+a.push(4)
+
+print("a after push:", a)
+
+print("a.pop() =>", a.pop())
+
+print("a now:", a)
+
+a.add(100)
+
+print("a after add:", a)
+
+print("a.indexOf(2):", a.indexOf(2))
+
+print("a.contains(99):", a.contains(99))
+a.remove(100)
+
+print("a after remove:", a)
+
+// objects and member access
+let obj = { name: "test", nested: { v: 5 } }
+
+print("obj.name =>", obj.name)
+
+print("obj.nested.v =>", obj.nested.v)
+
+obj.newProp = 42
+
+print("obj repr:")
+
+repr(obj)
+
+// maps and sets
+let m = { }
+
+// use object as map for now
+
+m['k'] = "value"
+
+print("m.k =>", m.k)
+
+
+let s = []
+
+s.add(1)
+
+s.add(2)
+
+print("set-like s repr:")
+
+repr(s)
+
+// strings, f-strings and format
+
+let name = "World"
+
+print("Hello " + name)
+
+print(f"Hi {name} {1+2}")
+
+print(format("{} - {}", name, 123))
+
+// simple comparisons (no 'if' statement in this minimal language)
+print("3 > 2 =>", 3 > 2)
+
+print("2 > 3 =>", 2 > 3)
+
+// comments
+// single line
+/* block
+   comment */
+
+// fs quick smoke (creates and removes a temp dir)
+let tmp = "./tools/_fs_test_run"
+
+fs.mkdir(tmp)
+
+fs.writeText(tmp + "/file.txt", "hello from test")
+
+print(fs.readText(tmp + "/file.txt"))
+
+fs.remove(tmp)
+
+// simple if/else tests
+
+let cond = 1
+
+if (cond > 0) {
+    print("if true branch")
+} else {
+    print("if false branch")
+}
+
+cond = 0
+
+if (cond > 0) {
+    print("should not print this")
+} else {
+    print("else branch executed")
+}
+
+// else-if chain and single-statement if (no braces)
+let n = 2
+if (n == 1) print("n is 1")
+else if (n == 2) print("n is 2 (else-if)")
+else print("n is something else")
+
+if (n > 0) print("single-statement if without braces works");
+
+// Additional builtins tests
+let arr2 = ["a", "b"]
+print("len arr2:", len(arr2))
+print("len name:", len(name))
+print("toString arr2:", toString(arr2))
+print("typeOf arr2:", typeOf(arr2))
+
+// print with sep and end
+print("one", "two", { sep: "," })
+print("no-newline", { end: "" })
+print(" <- previous had no newline")
+
+// loops: for and while
+print("for loop sum:")
+let sum = 0
+for (let i = 0; i < 5; i = i + 1) {
+    sum = sum + i
+}
+print(sum)
+
+print("while loop countdown:")
+let c = 3
+while (c > 0) {
+    print(c)
+    c = c - 1
+}
+
+
+
+// classes: simple class with constructor, fields and methods
+class Person {
+    let species = "Homo sapiens"
+    func constructor(name, age) {
+        this.name = name
+        this.age = age
+    }
+    func greet() {
+        print("hello, my name is", this.name)
+    }
+}
+
+let p = Person("Alice", 30)
+print("person name:", p.name)
+p.greet()
+p.age = 31
+print("person age after birthday:", p.age)
+
+// switch / case tests
+print("switch tests:")
+let code = 2
+switch (code) {
+    case 1:
+        print("one")
+        break
+    case 2:
+        print("two")
+        break
+    default:
+        print("other")
+}
+
+// fallthrough example (no break on case 10 -> falls into case 11)
+let code2 = 10
+switch (code2) {
+    case 9:
+        print("nine")
+        break
+    case 10:
+        print("ten - falling through")
+    case 11:
+        print("eleven")
+        break
+    default:
+        print("no match")
+}
+
+
+
+// final repr of global env elements
+print("Finished test file")

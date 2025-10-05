@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.ns", "esnext", "dom"]
+  },
+  "exports": {
+    "./": "./cli.ts",
+    "./repl": "./dsxrepl.ts"
+  },
+  "name": "Elyx",
+  "version": "0.1.0",
+  "description": "Elyx — a small scripting language implemented in TypeScript for Deno (files .dsx)",
+  "author": "ZtaMDev",
+  "repository": "https://github.com/ZtaMDev/elyx",
+  "license": "MIT"
+}

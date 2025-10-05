@@ -1,0 +1,7 @@
+{
+  "deno.enable": true,
+  "deno.path": "C:\\Users\\zonda\\.deno\\bin\\deno.exe",
+  "deno.lint": true,
+  "typescript.validate.enable": false,
+  "javascript.validate.enable": false
+}
